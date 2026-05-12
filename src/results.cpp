@@ -22,8 +22,8 @@ void write_results(const Results& r) {
 
 	std::cout << "Eigvec size: " << eigvec_full.n_rows << " x " << eigvec_full.n_cols << "\n";
 
-
 	// save results to CSV
+	std::cout << "Writing to results/" << r.geometry <<"_*.csv\n";
 	arma::vec eigval_real = arma::real(r.eigval);
 	arma::vec eigval_imag = arma::imag(r.eigval);
 	arma::mat eigvec_real = arma::real(eigvec_full);

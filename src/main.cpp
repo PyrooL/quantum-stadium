@@ -7,7 +7,9 @@
 #include "stadium/geometry.hpp"
 #include "stadium/operators.hpp"
 #include "semicircle/semicircle.hpp"
+#include "circle/circle.hpp"
 #include "square/square.hpp"
+#include "square/stitched_square.hpp"
 #include "results.hpp"
 
 int main_stadium(int M, int N);
@@ -16,8 +18,8 @@ int main_square(int M, int N);
 
 int main(int argc, char *argv[]) {
 	std::string mode = "stadium";
-	int M = 30; 
-	int N = 30;
+	int M = 32; 
+	int N = 32;
 
 	if (argc > 1) {
 		mode = argv[1]; 
@@ -34,15 +36,22 @@ int main(int argc, char *argv[]) {
 
 	std::cout << "Pseudospectral solution to particle in a " << mode << std::endl;
 	std::cout << "M = " << M << ", N = " << N << std::endl;
+	Results results;
 	if (mode == "stadium") {
 		main_stadium(M, N);
 	} else if (mode == "semicircle") {
-		main_semicircle(M, N);
+		results = solve_semicircle(M, N);
 	} else if (mode == "square") {
-		main_square(M, N);
+		// results = solve_square(M, N);
+		results = solve_stitched_square(M, N);
+	} else if (mode == "circle") {
+		results = solve_circle(M, N);
 	} else {
 		return 1;
 	}
+
+	std::cout << results.geometry << std::endl;
+	write_results(results);
 	
 	std::cout << "That's all, folks!\n";
     return 0;
@@ -61,16 +70,3 @@ int main_stadium(int M, int N) {
 	
 	return 0;
 }
-
-int main_semicircle(int M, int N) {
-	auto results = solve_semicircle(M, N);
-	write_results(results);
-	return 0;
-}
-
-int main_square(int M, int N) {
-	auto results = solve_square(M, N);
-	write_results(results);
-	return 0;
-}
-

@@ -21,8 +21,8 @@ Results solve_square(int M, int N) {
 	r.x = arma::kron(x, arma::ones(n_y));
 	r.y = arma::kron(arma::ones(n_x), y);
 
-	const arma::mat I_x = arma::eye(M+1, M+1);
-	const arma::mat I_y = arma::eye(N+1, N+1);
+	const arma::mat I_x = arma::eye(n_x, n_x);
+	const arma::mat I_y = arma::eye(n_y, n_y);
 
 	// first derivatives
 	const arma::mat D_x = chebyshev_diff_matrix(M, 0., L_x);
@@ -78,3 +78,4 @@ Results solve_square(int M, int N) {
 
 	return r;
 }
+

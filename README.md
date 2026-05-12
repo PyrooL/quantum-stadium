@@ -12,7 +12,7 @@ Run:
 
 `geometry`: "stadium" (default), "square", "semicircle", "circle". Circle and stadium not implemented yet.
 
-`M`: defaults to 30.
+`M`: defaults to 32.
 
 `N`: defaults to M if not passed, or 30 if M not passed either. 
 

@@ -38,11 +38,11 @@ arma::mat chebyshev_diff_matrix(int n, double ymin, double ymax) {
 }
 
 arma::mat fourier_diff_matrix(int n, double ymin, double ymax) {
-	arma::vec x = 2. * pi * arma::linspace(0., 1., n) / n;
+	arma::vec x = 2. * pi * arma::regspace(0., 1., n-1) / n;
 	arma::mat D = arma::zeros<arma::mat>(n, n);
 
-	for (int i = 0; i <= n; i++) {
-		for (int j = 0; j <= n; j++) {
+	for (int i = 0; i < n; i++) {
+		for (int j = 0; j < n; j++) {
 			if (i == j) {
 				D(i, j) = 0.;
 			} else {
