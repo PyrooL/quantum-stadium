@@ -3,7 +3,6 @@
 #include <armadillo>
 
 #include "spectral.hpp"
-#include "eigen.hpp"
 #include "square/square.hpp"
 #include "results.hpp"
 

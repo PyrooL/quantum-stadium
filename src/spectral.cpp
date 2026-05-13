@@ -56,6 +56,7 @@ arma::mat fourier_diff_matrix(int n, double ymin, double ymax) {
 	return D;
 }
 
+// Linalg helpers 
 int kron_index(int N_x, int N_y, int x_i, const int y_j) {
 	/* Returns the tensor product index of (x_i, y_j) in a space defined by 
 	 * X \otimes Y from the x index x_i and the y index y_j
@@ -66,3 +67,34 @@ int kron_index(int N_x, int N_y, int x_i, const int y_j) {
 		return x_i * N_y + y_j;
 }
 
+
+std::tuple<arma::cx_vec, arma::cx_mat> diagonalize(const arma::mat &M) {
+	arma::cx_vec eigval;
+	arma::cx_mat eigvec;
+	bool diag_success = arma::eig_gen(eigval, eigvec, M);
+	if (not diag_success) {
+        throw std::runtime_error("Diagonalization failed");
+	}
+	return {eigval, eigvec};
+}
+
+
+std::tuple<arma::cx_vec, arma::cx_mat> diagonalize_pair(const arma::mat &A, const arma::mat &B) {
+	arma::cx_vec eigval;
+	arma::cx_mat eigvec;
+	bool diag_success = arma::eig_pair(eigval, eigvec, A, B);
+	if (not diag_success) {
+        throw std::runtime_error("Diagonalization failed");
+	}
+	return {eigval, eigvec};
+}
+
+
+arma::mat block_diag(const arma::mat& A, const arma::mat& B) {
+    const arma::uword rows = A.n_rows + B.n_rows;
+    const arma::uword cols = A.n_cols + B.n_cols;
+    arma::mat M(rows, cols, arma::fill::zeros);
+    M.submat(0, 0, A.n_rows - 1, A.n_cols - 1) = A;
+    M.submat(A.n_rows, A.n_cols, rows - 1, cols - 1) = B;
+    return M;
+}

@@ -3,7 +3,6 @@
 #include <cmath>
 #include <armadillo>
 #include "spectral.hpp"
-#include "eigen.hpp"
 #include "stadium/geometry.hpp"
 #include "stadium/operators.hpp"
 #include "semicircle/semicircle.hpp"
@@ -43,7 +42,7 @@ int main(int argc, char *argv[]) {
 		results = solve_semicircle(M, N);
 	} else if (mode == "square") {
 		// results = solve_square(M, N);
-		results = solve_stitched_square(M, N);
+		results = solve_stitched_square(M);
 	} else if (mode == "circle") {
 		results = solve_circle(M, N);
 	} else {
