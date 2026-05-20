@@ -2,8 +2,8 @@
 #include <cmath>
 
 #include "spectral.hpp"
-#include "square/stitched_square.hpp"
 #include "results.hpp"
+#include "square/stitched_square.hpp"
 
 
 Results solve_stitched_square(int M) {
@@ -21,14 +21,8 @@ Results solve_stitched_square(int M) {
 	const unsigned int n_x = x.n_rows;
 	const unsigned int n_y = y_lower.n_rows;
 
-	const vec x_full = join_cols(
-			kron(x, ones(n_y)), 
-			kron(x, ones(n_y))
-		);
-	const vec y_full = join_cols(
-			kron(ones(n_x), y_upper), 
-			kron(ones(n_x), y_lower)
-		);
+	const vec x_full = join_cols(kron(x, ones(n_y)), kron(x, ones(n_y)));
+	const vec y_full = join_cols(kron(ones(n_x), y_upper), kron(ones(n_x), y_lower));
 
 	const uvec i_x_min = find(x_full == min(x_full));
 	const uvec i_x_max = find(x_full == max(x_full));
@@ -41,6 +35,7 @@ Results solve_stitched_square(int M) {
 	const uvec idx_interface_lower = idx_interface.tail(n_x);
 	const uvec idx_interface_upper_inner = idx_interface_upper.subvec(1, n_x - 2);
 	const uvec idx_interface_lower_inner = idx_interface_lower.subvec(1, n_x - 2);
+
 	////////////////////
 	// Define operators
 	////////////////////
@@ -62,7 +57,6 @@ Results solve_stitched_square(int M) {
 	const mat Lap_lower = kron(D2x, Iy) + kron(Ix, D2y_lower);
 	const mat Lap_upper = kron(D2x, Iy) + kron(Ix, D2y_upper);
 	const mat H = -block_diag(Lap_upper, Lap_lower);
-	std::cout << "Built square hamiltonian\n";
 	std::cout << "H size: " << H.n_rows << " x " << H.n_cols << std::endl;
 	std::cout << "H has NaN: " << H.has_nan() << std::endl;
 	std::cout << "H has Inf: " << H.has_inf() << std::endl;
@@ -103,7 +97,7 @@ Results solve_stitched_square(int M) {
 	r.y = y_full;
 	r.eigval = eigval;
 	r.eigvec = eigvec;
-	r.excluded_points = zeros(x_full.n_rows);
+	r.excluded_points = zeros(r.x.n_rows);
 
 	return r;
 }

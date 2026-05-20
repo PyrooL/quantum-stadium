@@ -69,4 +69,5 @@ Testing/
 .cache/
 
 # CSV results
+*.csv
 results/
