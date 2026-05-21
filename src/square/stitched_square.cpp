@@ -68,6 +68,13 @@ Results solve_stitched_square(int M) {
 	mat A = H;
 	mat B = eye(size(A));
 
+	// Dirichlet BCs
+	A.rows(boundary_points_idx).zeros();
+	B.rows(boundary_points_idx).zeros();
+	for (auto k : boundary_points_idx) {
+		A(k, k) = 1.0;
+	}
+
 	// Interface conditions
 	// Continuity of wave function
 	A.rows(idx_interface_upper_inner).zeros();
@@ -79,13 +86,6 @@ Results solve_stitched_square(int M) {
 	// Continuity of y derivative
 	A.rows(idx_interface_lower_inner) = Dy.rows(idx_interface_upper_inner) - Dy.rows(idx_interface_lower_inner);
 	B.rows(idx_interface_lower_inner).zeros();
-
-	// Dirichlet BCs
-	A.rows(boundary_points_idx).zeros();
-	B.rows(boundary_points_idx).zeros();
-	for (auto k : boundary_points_idx) {
-		A(k, k) = 1.0;
-	}
 
 	////////////////////
 	// Build results

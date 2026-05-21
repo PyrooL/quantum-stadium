@@ -10,12 +10,15 @@ Results solve_circle(int M, int N) {
 
 	const double rho_min = 0.;
 	const double rho_max = 1.;
+	const double theta_min = 0.;
+	const double theta_max = 2.*pi;
 
 	////////////////////
 	// Define geometry
 	////////////////////
 	const vec rho = gauss_lobatto(M, rho_min, rho_max);
-	const vec theta = 2.*pi * regspace(0., 1., N-1) / N;
+	// const vec theta = 2.*pi * regspace(0., 1., N-1) / N;
+	const vec theta = gauss_lobatto(N, theta_min, theta_max);
 	const unsigned n_rho = rho.n_rows; // M+1
 	const unsigned n_theta = theta.n_rows; // N
 	
@@ -26,7 +29,10 @@ Results solve_circle(int M, int N) {
 
 	const uvec idx_rho_max = find(rho_full == rho_max);
 	const uvec idx_rho_min = find(rho_full == rho_min); // origin points
-	const uvec idx_redundant = idx_rho_min.tail(n_theta - 1);
+	const uvec idx_theta_max = find(theta_full == theta_max);
+	const uvec idx_theta_min = find(theta_full == theta_min);
+	const uvec idx_theta_max_inner = idx_theta_max.subvec(1, n_rho - 2);
+	const uvec idx_theta_min_inner = idx_theta_min.subvec(1, n_rho - 2);
 	
 	////////////////////
 	// Define operators
@@ -39,52 +45,26 @@ Results solve_circle(int M, int N) {
 
 	// first derivatives
 	const mat Drho = chebyshev_diff_matrix(M, rho_min, rho_max);
-	const mat Dtheta = fourier_diff_matrix(N);
+	// const mat Dtheta = fourier_diff_matrix(N);
+	const mat Dtheta = chebyshev_diff_matrix(N, theta_min, theta_max);
 
 	// second derivatives
 	const mat D2rho = Drho * Drho;
 	const mat D2theta = Dtheta * Dtheta;
 
 	// Laplacian
-	// regularize at the origin
 	mat Lap =
 		kron(D2rho + inv_rho * Drho, Itheta) +
 		kron(inv_rho2 * Irho, D2theta);
-	const unsigned int j_theta_0 = index_min(abs(theta));
-	const unsigned int j_theta_pi2 = index_min(abs(theta - pi/2));
-	const unsigned int j_theta_pi = index_min(abs(theta - pi));
-	const unsigned int j_theta_3pi2 = index_min(abs(theta - 3.*pi/2));
-	const uvec cardinal_idx = {j_theta_0, j_theta_pi2, j_theta_pi, j_theta_3pi2};
-
-	for (int i = 0; i < 4; i++) {
-		int j = cardinal_idx(i);
-		if (std::abs(theta(j) - i*pi/2) > 1e-9) {
-			std::cout << "WARNING: Your grid does not contain theta = " << i << "pi/2." << 
-				"Results will probably not make sense.\n";
-			std::cout << "  Rerun with N mod 4 = 0 to place grid points at theta = n*pi/2\n";
-		}
-	}
-
-
+	// regularize at the origin
+	// Huang & Sloan (1992) "Pole Condition for Singular Problems: The Pseudospectral Approximation". https://doi.org/10.1006/jcph.1993.1141
 	const mat Drho_full = kron(Drho, Itheta);
 	const mat D2rho_full = kron(D2rho, Itheta);
 	const mat Dtheta_full = kron(Irho, Dtheta);
 	const mat D2theta_full = kron(Irho, D2theta);
 	for (auto k: idx_rho_min) {
-		// Lap.row(k) = D2theta_full.row(k) - (2.*pi/n_theta) * Drho_full(k);
-		Lap.row(k) = Drho_full.row(k);
+		Lap.row(k) = D2theta_full.row(k) - 2.*pi/n_theta*Drho_full.row(k);
 	}
-
-	// del^2 u(0,0) = (u_xx + u_yy) (0,0)= u_rr(0, theta = {0, pi}) + u_rr(theta = {pi/2, 3pi/2})
-	const rowvec u_xx = 0.5 * (
-			D2rho_full.row(idx_rho_min(j_theta_0)) + 
-			D2rho_full.row(idx_rho_min(j_theta_pi))
-			); // u_xx = d^2/drho^2 | theta = {0,pi} averaged
-	const rowvec u_yy = 0.5 * (
-			D2rho_full.row(idx_rho_min(j_theta_pi2)) + 
-			D2rho_full.row(idx_rho_min(j_theta_3pi2))
-			); // u_yy = d^2/drho^2 | theta = {+/- pi/2} averaged
-	//Lap.row(idx_rho_min(0)) = u_xx + u_yy;
 
 	mat H = -Lap;
 	std::cout << "H size: " << H.n_rows << " x " << H.n_cols << "\n";
@@ -107,21 +87,18 @@ Results solve_circle(int M, int N) {
 
 	B.rows(idx_rho_min).zeros();
 
-	// build projection matrix averaging over all rows at the origin
-	/*
-	mat P = eye(size(A));
-	vec avg = zeros<vec>(A.n_rows);
-	for (auto k : idx_rho_min) {
-		avg(k) = 1.0 / std::sqrt((double)idx_rho_min.n_elem);
-		P.col(k) = avg;
+	// Interface conditions
+	// Continuity of wave function
+	A.rows(idx_theta_max_inner).zeros();
+	B.rows(idx_theta_max_inner).zeros();
+	for (unsigned int k = 0; k < n_rho-2; k++) {
+		A(idx_theta_max_inner(k), idx_theta_max_inner(k)) = 1.0;
+		A(idx_theta_max_inner(k), idx_theta_min_inner(k)) = -1.0;
 	}
-	P.shed_cols(idx_redundant);
-	const mat A_reduced = P.t() * A * P;
-	const mat B_reduced = P.t() * B * P;
-	auto [eigval, eigvec] = diagonalize_pair(A_reduced, B_reduced);
-	x_full.shed_rows(idx_redundant);
-	y_full.shed_rows(idx_redundant);
-	*/
+	// Continuity of theta derivative
+	A.rows(idx_theta_min_inner) = Dtheta_full.rows(idx_theta_max_inner) - Dtheta_full.rows(idx_theta_min_inner);
+	B.rows(idx_theta_min_inner).zeros();
+
 	auto [eigval, eigvec] = diagonalize_pair(A, B);
 	A.save("A.csv", csv_ascii);
 	B.save("B.csv", csv_ascii);

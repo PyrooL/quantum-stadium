@@ -47,7 +47,7 @@ arma::mat fourier_diff_matrix(int n, double ymin, double ymax) {
 				D(i, j) = 0.;
 			} else {
 				double sign = ((i + j) % 2 == 0) ? 1.0 : -1.0; // (-1)^(i+j)
-				D(i, j) = sign * 0.5 / std::tan(pi * (x(i) - x(j)) / 2);
+				D(i, j) = sign * 0.5 / std::tan((x(i) - x(j)) / 2);
 			}
 		}
 	}
