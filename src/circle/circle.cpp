@@ -10,22 +10,23 @@ Results solve_circle(int M, int N) {
 
 	const double rho_min = 0.;
 	const double rho_max = 1.;
-	const double theta_min = 0.;
-	const double theta_max =  2.*pi;
 
 	////////////////////
 	// Define geometry
 	////////////////////
 	const vec rho = gauss_lobatto(M, rho_min, rho_max);
-	const vec theta = 2.0 * pi * regspace(0., 1., N-1) / N;
+	const vec theta = 2.*pi * regspace(0., 1., N-1) / N;
 	const unsigned n_rho = rho.n_rows; // M+1
 	const unsigned n_theta = theta.n_rows; // N
 	
 	const vec rho_full = kron(rho, ones(n_theta));
 	const vec theta_full = kron(ones(n_rho), theta);
+	vec x_full = rho_full % cos(theta_full);
+	vec y_full = rho_full % sin(theta_full);
 
-	const uvec idx_rho_min = find(rho_full == rho_min); // n_theta degenerate origin points
 	const uvec idx_rho_max = find(rho_full == rho_max);
+	const uvec idx_rho_min = find(rho_full == rho_min); // origin points
+	const uvec idx_redundant = idx_rho_min.tail(n_theta - 1);
 	
 	////////////////////
 	// Define operators
@@ -38,18 +39,17 @@ Results solve_circle(int M, int N) {
 
 	// first derivatives
 	const mat Drho = chebyshev_diff_matrix(M, rho_min, rho_max);
-	const mat Dtheta = fourier_diff_matrix(N, theta_min, theta_max);
+	const mat Dtheta = fourier_diff_matrix(N);
 
 	// second derivatives
 	const mat D2rho = Drho * Drho;
 	const mat D2theta = Dtheta * Dtheta;
 
-	// Laplacian and Hamiltonian
+	// Laplacian
+	// regularize at the origin
 	mat Lap =
 		kron(D2rho + inv_rho * Drho, Itheta) +
 		kron(inv_rho2 * Irho, D2theta);
-	// regularize at the origin
-	// del^2 u(0,0) = (u_xx + u_yy) (0,0)= u_rr(0, theta = {0, pi}) + u_rr(theta = {pi/2, 3pi/2})
 	const unsigned int j_theta_0 = index_min(abs(theta));
 	const unsigned int j_theta_pi2 = index_min(abs(theta - pi/2));
 	const unsigned int j_theta_pi = index_min(abs(theta - pi));
@@ -65,7 +65,17 @@ Results solve_circle(int M, int N) {
 		}
 	}
 
+
+	const mat Drho_full = kron(Drho, Itheta);
 	const mat D2rho_full = kron(D2rho, Itheta);
+	const mat Dtheta_full = kron(Irho, Dtheta);
+	const mat D2theta_full = kron(Irho, D2theta);
+	for (auto k: idx_rho_min) {
+		// Lap.row(k) = D2theta_full.row(k) - (2.*pi/n_theta) * Drho_full(k);
+		Lap.row(k) = Drho_full.row(k);
+	}
+
+	// del^2 u(0,0) = (u_xx + u_yy) (0,0)= u_rr(0, theta = {0, pi}) + u_rr(theta = {pi/2, 3pi/2})
 	const rowvec u_xx = 0.5 * (
 			D2rho_full.row(idx_rho_min(j_theta_0)) + 
 			D2rho_full.row(idx_rho_min(j_theta_pi))
@@ -74,9 +84,8 @@ Results solve_circle(int M, int N) {
 			D2rho_full.row(idx_rho_min(j_theta_pi2)) + 
 			D2rho_full.row(idx_rho_min(j_theta_3pi2))
 			); // u_yy = d^2/drho^2 | theta = {+/- pi/2} averaged
-	for (auto k : idx_rho_min) {
-		Lap.row(k) = u_xx + u_yy;
-	}
+	//Lap.row(idx_rho_min(0)) = u_xx + u_yy;
+
 	mat H = -Lap;
 	std::cout << "H size: " << H.n_rows << " x " << H.n_cols << "\n";
 	std::cout << "H has NaN: " << H.has_nan() << "\n";
@@ -96,27 +105,30 @@ Results solve_circle(int M, int N) {
 		A(k, k) = 1.0;	
 	}
 
+	B.rows(idx_rho_min).zeros();
+
 	// build projection matrix averaging over all rows at the origin
+	/*
 	mat P = eye(size(A));
 	vec avg = zeros<vec>(A.n_rows);
-	for (auto k : idx_rho_min)
+	for (auto k : idx_rho_min) {
 		avg(k) = 1.0 / std::sqrt((double)idx_rho_min.n_elem);
-	P.col(idx_rho_min(0)) = avg;
-	const uvec idx_redundant = idx_rho_min.tail(idx_rho_min.n_elem - 1);
+		P.col(k) = avg;
+	}
 	P.shed_cols(idx_redundant);
 	const mat A_reduced = P.t() * A * P;
 	const mat B_reduced = P.t() * B * P;
 	auto [eigval, eigvec] = diagonalize_pair(A_reduced, B_reduced);
+	x_full.shed_rows(idx_redundant);
+	y_full.shed_rows(idx_redundant);
+	*/
+	auto [eigval, eigvec] = diagonalize_pair(A, B);
+	A.save("A.csv", csv_ascii);
+	B.save("B.csv", csv_ascii);
 
 	////////////////////
 	// Build results
 	////////////////////
-	vec x_full = rho_full % cos(theta_full);
-	vec y_full = rho_full % sin(theta_full);
-	x_full.shed_rows(idx_redundant);
-	y_full.shed_rows(idx_redundant);
-	A_reduced.save("A.csv", csv_ascii);
-	B_reduced.save("B.csv", csv_ascii);
 	Results r;
 	r.geometry = "circle";
 	r.x = x_full;
