@@ -32,27 +32,21 @@ arma::mat chebyshev_diff_matrix(int n, double ymin, double ymax) {
 			}
 		}
 	}
-	double scale = 2.0 / (ymax - ymin);
-	D = scale * D;
+	D *= 2.0 / (ymax - ymin);
 	return D;
 }
 
 arma::mat fourier_diff_matrix(int n, double ymin, double ymax) {
-	arma::vec x = 2. * pi * arma::regspace(0., 1., n-1) / n;
 	arma::mat D = arma::zeros<arma::mat>(n, n);
-
 	for (int i = 0; i < n; i++) {
 		for (int j = 0; j < n; j++) {
-			if (i == j) {
-				D(i, j) = 0.;
-			} else {
-				double sign = ((i + j) % 2 == 0) ? 1.0 : -1.0; // (-1)^(i+j)
-				D(i, j) = sign * 0.5 / std::tan((x(i) - x(j)) / 2);
+			if (i == j) continue;
+			double sign = ((i + j) % 2 == 0) ? 1.0 : -1.0; // (-1)^(i+j)
+			double theta = pi * (i - j) / n;
+			D(i, j) = sign * 0.5 / std::tan(theta);
 			}
 		}
-	}
-	double scale = 2. * pi / (ymax - ymin);
-	D = scale * D;
+	D *= 2. * pi / (ymax - ymin);
 	return D;
 }
 
