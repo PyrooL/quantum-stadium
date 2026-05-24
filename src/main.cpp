@@ -4,13 +4,12 @@
 #include <armadillo>
 #include "spectral.hpp"
 #include "stadium/stadium.hpp"
-#include "stadium/geometry.hpp"
-#include "stadium/operators.hpp"
 #include "semicircle/semicircle.hpp"
 #include "circle/circle.hpp"
 #include "square/square.hpp"
-#include "square/stitched_square.hpp"
 #include "results.hpp"
+
+#define ARMA_USE_BLAS
 
 int main_stadium(int M, int N);
 int main_semicircle(int M, int N);
@@ -45,7 +44,7 @@ int main(int argc, char *argv[]) {
 		// results = solve_square(M, N);
 		results = solve_stitched_square(M);
 	} else if (mode == "circle") {
-		results = solve_circle(M, N);
+		results = solve_stitched_circle(M, N);
 	} else {
 		return 1;
 	}

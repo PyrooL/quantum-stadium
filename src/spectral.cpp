@@ -84,11 +84,57 @@ std::tuple<arma::cx_vec, arma::cx_mat> diagonalize_pair(const arma::mat &A, cons
 }
 
 
-arma::mat block_diag(const arma::mat& A, const arma::mat& B) {
-    const arma::uword rows = A.n_rows + B.n_rows;
-    const arma::uword cols = A.n_cols + B.n_cols;
-    arma::mat M(rows, cols, arma::fill::zeros);
-    M.submat(0, 0, A.n_rows - 1, A.n_cols - 1) = A;
-    M.submat(A.n_rows, A.n_cols, rows - 1, cols - 1) = B;
-    return M;
+arma::mat block_diag(const std::vector<arma::mat>& blocks)
+{
+    arma::uword total_rows = 0;
+    arma::uword total_cols = 0;
+
+    for (const auto& M : blocks) {
+        total_rows += M.n_rows;
+        total_cols += M.n_cols;
+    }
+
+    arma::mat out(total_rows, total_cols, arma::fill::zeros);
+
+    arma::uword row_offset = 0;
+    arma::uword col_offset = 0;
+
+    for (const auto& M : blocks) {
+        out.submat(
+            row_offset,
+            col_offset,
+            row_offset + M.n_rows - 1,
+            col_offset + M.n_cols - 1
+        ) = M;
+
+        row_offset += M.n_rows;
+        col_offset += M.n_cols;
+    }
+
+    return out;
+}
+
+void stitch_interface(
+		arma::mat& A, 
+		arma::mat& B, 
+		const arma::uvec& idx1, 
+		const arma::uvec& idx2, 
+		const arma::mat& D_interface) {
+	const unsigned n = idx1.n_elem;
+	A.rows(idx1).zeros();
+	B.rows(idx1).zeros();
+	for (unsigned i = 0; i < n; i++) {
+		A(idx1(i), idx1(i)) = 1.0;
+		A(idx1(i), idx2(i)) = -1.0;
+	}
+	A.rows(idx2) = D_interface.rows(idx1) - D_interface.rows(idx2);
+	B.rows(idx2).zeros();
+}
+
+void dirichlet_bc(arma::mat& A, arma::mat& B, const arma::uvec& idx_boundary_points) {
+	A.rows(idx_boundary_points).zeros();
+	B.rows(idx_boundary_points).zeros();
+	for (auto k: idx_boundary_points) {
+		A(k,k) = 1;
+	}
 }

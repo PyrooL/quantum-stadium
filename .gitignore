@@ -71,3 +71,5 @@ Testing/
 # CSV results
 *.csv
 results/
+
+src/.ipynb_checkpoints

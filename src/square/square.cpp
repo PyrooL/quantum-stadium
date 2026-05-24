@@ -78,3 +78,83 @@ Results solve_square(int M, int N) {
 	return r;
 }
 
+Results solve_stitched_square(int M) {
+	using namespace arma;
+
+	const float L_x = 1.0;
+	const float L_y = 1.0;
+
+	////////////////////
+	// Define geometry
+	////////////////////
+	const vec x = gauss_lobatto(2*M, -L_x/2, L_x/2);
+	const vec y_lower = gauss_lobatto(M, -L_y/2, 0.);
+	const vec y_upper = gauss_lobatto(M, 0., L_y/2);
+	const unsigned int n_x = x.n_rows;
+	const unsigned int n_y = y_lower.n_rows;
+
+	const vec x_full = join_cols(kron(x, ones(n_y)), kron(x, ones(n_y)));
+	const vec y_full = join_cols(kron(ones(n_x), y_upper), kron(ones(n_x), y_lower));
+
+	const uvec i_x_min = find(x_full == min(x_full));
+	const uvec i_x_max = find(x_full == max(x_full));
+	const uvec j_y_min = find(y_full == min(y_full));
+	const uvec j_y_max = find(y_full == max(y_full));
+
+	const uvec idx_interface = find(y_full == 0.);
+	const uvec idx_interface_upper = idx_interface.head(n_x);
+	const uvec idx_interface_lower = idx_interface.tail(n_x);
+
+	////////////////////
+	// Define operators
+	////////////////////
+	const mat Ix = eye(n_x, n_x);
+	const mat Iy = eye(n_y, n_y);
+
+	// first derivatives
+	const mat Dx = chebyshev_diff_matrix(n_x - 1, min(x), max(x));
+	const mat Dy = chebyshev_diff_matrix(n_y - 1, min(y_lower), max(y_lower));
+
+	// second derivatives
+	const mat D2x = Dx * Dx;
+	const mat D2y = Dy * Dy;
+
+	// Laplacian & Hamiltonian
+	const mat Lap = kron(D2x, Iy) + kron(Ix, D2y);
+	const mat H = -block_diag({Lap, Lap});
+	std::cout << "H size: " << H.n_rows << " x " << H.n_cols << std::endl;
+	std::cout << "H has NaN: " << H.has_nan() << std::endl;
+	std::cout << "H has Inf: " << H.has_inf() << std::endl;
+	
+	////////////////////
+	// Generalized eigenvalue problem
+	// Au = \lambda*Bu
+	////////////////////
+	mat A = H;
+	mat B = eye(size(A));
+
+	// Dirichlet BCs
+	const uvec boundary_points_idx  = join_cols(i_x_min, i_x_max, j_y_min, j_y_max);
+	dirichlet_bc(A, B, boundary_points_idx);
+
+	// Interface conditions
+	const uvec idx_interface_upper_inner = idx_interface_upper.subvec(1, n_x - 2);
+	const uvec idx_interface_lower_inner = idx_interface_lower.subvec(1, n_x - 2);
+	const mat Dy_full = block_diag({kron(Ix, Dy), kron(Ix, Dy)});
+	stitch_interface(A, B, idx_interface_upper_inner, idx_interface_lower_inner, Dy_full);
+
+	////////////////////
+	// Build results
+	////////////////////
+	auto [eigval, eigvec] = diagonalize_pair(A, B);
+	Results r;
+	r.geometry = "square";
+	r.x = x_full;
+	r.y = y_full;
+	r.eigval = eigval;
+	r.eigvec = eigvec;
+	r.excluded_points = zeros(r.x.n_rows);
+
+	return r;
+}
+
